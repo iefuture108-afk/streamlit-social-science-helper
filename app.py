@@ -1,190 +1,117 @@
-from io import BytesIO
-
-import cv2
-import easyocr
-import numpy as np
-import pandas as pd
 import streamlit as st
-from PIL import Image
 
+st.set_page_config(page_title="Social Science Helper", layout="wide")
 
-st.set_page_config(
-    page_title="Photo To Excel",
-    layout="wide",
-)
+LESSONS = {
+    "map": {
+        "title": "Maps And Directions",
+        "explanation": "A map is a small drawing of a big place. It helps us find roads, rivers, cities, states, and countries. Directions like north, south, east, and west help us know where things are.",
+        "points": ["Maps show places from above.", "Symbols stand for real things.", "A compass shows directions.", "Maps help us travel and learn about places."],
+        "example": "If your school is north of your home, a map can help you find the road to reach it.",
+        "activity": "Draw a simple map from your home to your school and mark one road, one shop, and one turn.",
+        "questions": ["What is a map?", "Name four main directions.", "Why do we use symbols on a map?"],
+    },
+    "transport": {
+        "title": "Transport",
+        "explanation": "Transport means ways of moving people and goods from one place to another. Road, rail, water, and air transport help us travel and send things faster.",
+        "points": ["Buses and cars move on roads.", "Trains move on railway tracks.", "Ships move on water.", "Aeroplanes move through air."],
+        "example": "Milk, fruits, and books reach shops by different types of transport.",
+        "activity": "Make four columns: road, rail, water, air. Write two examples in each.",
+        "questions": ["What is transport?", "Which transport moves on tracks?", "Why is transport important?"],
+    },
+    "water": {
+        "title": "Water Sources",
+        "explanation": "Water is needed by people, plants, and animals. We get water from rain, rivers, lakes, ponds, wells, and taps. We should not waste or dirty water.",
+        "points": ["Rain is an important source of water.", "Rivers and lakes store water.", "Clean water keeps us healthy.", "Saving water helps everyone."],
+        "example": "We use water for drinking, bathing, cooking, and watering plants.",
+        "activity": "List five ways your family uses water in one day.",
+        "questions": ["Name two sources of water.", "Why should we save water?", "How can we keep water clean?"],
+    },
+    "festival": {
+        "title": "Festivals",
+        "explanation": "Festivals are special days when people celebrate together. They teach us joy, sharing, respect, and unity.",
+        "points": ["Festivals bring families together.", "People wear special clothes.", "Many festivals have special food.", "We should respect all festivals."],
+        "example": "During Diwali, many people light lamps. During Eid, many people share sweets.",
+        "activity": "Write three lines about your favorite festival.",
+        "questions": ["What is a festival?", "Why do people celebrate festivals?", "How can we respect all festivals?"],
+    },
+    "monument": {
+        "title": "Historical Places And Monuments",
+        "explanation": "Monuments are old and important buildings or places. They tell us about history and the way people lived long ago.",
+        "points": ["Monuments are part of our heritage.", "They teach us about the past.", "We should keep them clean.", "Many people visit monuments to learn."],
+        "example": "The Taj Mahal, Red Fort, and Qutub Minar are famous monuments in India.",
+        "activity": "Pick one monument and write its name, city, and one fact.",
+        "questions": ["What is a monument?", "Why should we protect monuments?", "Name one monument in India."],
+    },
+    "environment": {
+        "title": "Our Environment",
+        "explanation": "The environment means the air, water, land, plants, animals, and people around us. We should keep it clean.",
+        "points": ["Trees give us clean air.", "Pollution makes air and water dirty.", "We should reduce waste.", "Clean surroundings keep us healthy."],
+        "example": "Throwing waste in a dustbin helps keep streets and parks clean.",
+        "activity": "Plant a seed or clean one small area with an adult.",
+        "questions": ["What is environment?", "Why are trees important?", "How can we reduce pollution?"],
+    },
+    "general": {
+        "title": "Easy Social Science Study Help",
+        "explanation": "Social Science helps us learn about people, places, history, nature, rules, and how we live together.",
+        "points": ["Look carefully at the picture.", "Find the main topic.", "Ask what, where, why, and how.", "Connect it with daily life."],
+        "example": "If the picture shows a market, think about buyers, sellers, goods, money, and transport.",
+        "activity": "Write the topic name, draw the picture, and label three important things.",
+        "questions": ["What do you see in the picture?", "What is the topic about?", "Where do we see this in real life?"],
+    },
+}
 
-st.title("📷 Photo To Excel")
+MATCHES = {
+    "map": ["map", "direction", "north", "south", "east", "west", "globe"],
+    "transport": ["transport", "bus", "train", "car", "ship", "aeroplane", "vehicle"],
+    "water": ["water", "river", "rain", "lake", "sea", "well", "pond"],
+    "festival": ["festival", "diwali", "eid", "christmas", "holi"],
+    "monument": ["monument", "fort", "taj", "temple", "historical"],
+    "environment": ["environment", "pollution", "tree", "forest", "clean", "nature"],
+}
 
-st.markdown(
-    """
-### Photo Rules
+def detect_topic(text):
+    text = text.lower()
+    for topic, words in MATCHES.items():
+        if any(word in text for word in words):
+            return topic
+    return "general"
 
-- Landscape mode
-- Maximum 10 rows per photo
-- Include column headers
-- No blur
-- No glare
-- Fill most of the frame with the table
-"""
-)
+st.title("Social Science Helper")
+st.write("Free app for Class 3 to 5. Upload image, type topic hint, and get easy explanation.")
 
+grade = st.radio("Choose class", ["3", "4", "5"], horizontal=True)
+topic_hint = st.text_input("Topic hint", placeholder="Example: map, transport, water, festival, monument")
+image = st.file_uploader("Upload Social Science image", type=["png", "jpg", "jpeg", "webp"])
 
-@st.cache_resource
-def load_reader():
-    return easyocr.Reader(["en"], gpu=False)
+if image:
+    st.image(image, caption="Uploaded image", use_container_width=True)
 
+if st.button("Explain Simply", type="primary"):
+    lesson = LESSONS[detect_topic(topic_hint)]
 
-def calculate_blur_score(image: np.ndarray) -> float:
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    return cv2.Laplacian(gray, cv2.CV_64F).var()
+    st.subheader(lesson["title"])
+    st.info(f"Class {grade} topic: {topic_hint if topic_hint else 'General Social Science'}")
 
+    st.markdown("### Easy Explanation")
+    st.write(lesson["explanation"])
 
-def image_quality_check(image: np.ndarray):
-    height, width = image.shape[:2]
+    col1, col2 = st.columns(2)
 
-    blur_score = calculate_blur_score(image)
+    with col1:
+        st.markdown("### Key Points")
+        for point in lesson["points"]:
+            st.write("- " + point)
 
-    errors = []
+        st.markdown("### Quick Activity")
+        st.write(lesson["activity"])
 
-    if width < 1200:
-        errors.append(
-            f"Low resolution detected ({width}px). Recommended: 1200px+"
-        )
+    with col2:
+        st.markdown("### Real Life Example")
+        st.write(lesson["example"])
 
-    if blur_score < 100:
-        errors.append(
-            f"Image appears blurry (score={blur_score:.0f})"
-        )
+        st.markdown("### Practice Questions")
+        for i, question in enumerate(lesson["questions"], 1):
+            st.write(f"{i}. {question}")
 
-    return errors, blur_score
-
-
-def preprocess(image: np.ndarray) -> np.ndarray:
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-    gray = cv2.resize(
-        gray,
-        None,
-        fx=2,
-        fy=2,
-        interpolation=cv2.INTER_CUBIC,
-    )
-
-    gray = cv2.GaussianBlur(gray, (3, 3), 0)
-
-    binary = cv2.adaptiveThreshold(
-        gray,
-        255,
-        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv2.THRESH_BINARY,
-        11,
-        2,
-    )
-
-    return binary
-
-
-def extract_text(reader, image: np.ndarray):
-    results = reader.readtext(
-        image,
-        detail=1,
-        paragraph=False,
-    )
-
-    rows = []
-
-    for item in results:
-        _, text, confidence = item
-
-        if confidence < 0.30:
-            continue
-
-        rows.append(
-            {
-                "Text": text,
-                "Confidence": round(confidence, 3),
-            }
-        )
-
-    return pd.DataFrame(rows)
-
-
-uploaded_files = st.file_uploader(
-    "Upload Photos",
-    type=["jpg", "jpeg", "png"],
-    accept_multiple_files=True,
-)
-
-if uploaded_files:
-
-    reader = load_reader()
-
-    combined_df = pd.DataFrame()
-
-    for uploaded_file in uploaded_files:
-
-        st.divider()
-        st.subheader(uploaded_file.name)
-
-        image = Image.open(uploaded_file).convert("RGB")
-
-        image_np = np.array(image)
-        image_cv = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
-
-        st.image(image)
-
-        errors, blur_score = image_quality_check(image_cv)
-
-        st.write(f"Blur Score: {blur_score:.0f}")
-
-        if errors:
-            for error in errors:
-                st.warning(error)
-
-            st.error(
-                "Photo quality is poor. Ask user to retake."
-            )
-
-        processed = preprocess(image_cv)
-
-        with st.spinner("Running OCR..."):
-            df = extract_text(reader, processed)
-
-        if not df.empty:
-            combined_df = pd.concat(
-                [combined_df, df],
-                ignore_index=True,
-            )
-
-    if not combined_df.empty:
-
-        st.divider()
-        st.subheader("OCR Results")
-
-        st.dataframe(
-            combined_df,
-            use_container_width=True,
-        )
-
-        output = BytesIO()
-
-        with pd.ExcelWriter(
-            output,
-            engine="openpyxl",
-        ) as writer:
-            combined_df.to_excel(
-                writer,
-                index=False,
-                sheet_name="OCR_Data",
-            )
-
-        output.seek(0)
-
-        st.download_button(
-            label="📥 Download Excel",
-            data=output,
-            file_name="photo_to_excel.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
-    else:
-        st.warning("No text detected.")
+    st.success("Parent tip: Ask the child to explain this answer in their own words.")
